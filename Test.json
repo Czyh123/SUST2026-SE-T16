@@ -1,0 +1,51 @@
+[
+    {
+        "name": "需求分析",
+        "optimistic": 2,
+        "most_likely": 3,
+        "pessimistic": 4,
+        "predecessors": []
+    },
+    {
+        "name": "概要设计",
+        "optimistic": 3,
+        "most_likely": 4,
+        "pessimistic": 6,
+        "predecessors": ["需求分析"]
+    },
+    {
+        "name": "数据库设计",
+        "optimistic": 2,
+        "most_likely": 3,
+        "pessimistic": 5,
+        "predecessors": ["概要设计"]
+    },
+    {
+        "name": "前端开发",
+        "optimistic": 5,
+        "most_likely": 7,
+        "pessimistic": 9,
+        "predecessors": ["概要设计"]
+    },
+    {
+        "name": "后端开发",
+        "optimistic": 6,
+        "most_likely": 8,
+        "pessimistic": 10,
+        "predecessors": ["数据库设计"]
+    },
+    {
+        "name": "系统测试",
+        "optimistic": 3,
+        "most_likely": 4,
+        "pessimistic": 6,
+        "predecessors": ["前端开发", "后端开发"]
+    },
+    {
+        "name": "上线部署",
+        "optimistic": 1,
+        "most_likely": 2,
+        "pessimistic": 3,
+        "predecessors": ["系统测试"]
+    }
+]
