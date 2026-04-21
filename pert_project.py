@@ -12,22 +12,6 @@ plt.rcParams["axes.unicode_minus"] = False
 CHINESE_FONT = "SimHei"
 # ==============================================================
 
-# ====================== 景游园智导项目默认数据 ======================
-DEFAULT_PROJECT_TASKS = [
-    {"name": "景区需求调研与分析", "optimistic": 3, "most_likely": 5, "pessimistic": 7, "predecessors": []},
-    {"name": "系统架构设计", "optimistic": 2, "most_likely": 4, "pessimistic": 6, "predecessors": ["景区需求调研与分析"]},
-    {"name": "UI/UX原型设计", "optimistic": 3, "most_likely": 5, "pessimistic": 8, "predecessors": ["景区需求调研与分析"]},
-    {"name": "多智能体协同算法开发", "optimistic": 8, "most_likely": 12, "pessimistic": 16, "predecessors": ["系统架构设计"]},
-    {"name": "客流预测模型开发", "optimistic": 6, "most_likely": 10, "pessimistic": 14, "predecessors": ["系统架构设计"]},
-    {"name": "资源调度引擎开发", "optimistic": 5, "most_likely": 8, "pessimistic": 11, "predecessors": ["系统架构设计"]},
-    {"name": "前端可视化界面开发", "optimistic": 6, "most_likely": 9, "pessimistic": 12, "predecessors": ["UI/UX原型设计"]},
-    {"name": "系统集成与联调", "optimistic": 4, "most_likely": 6, "pessimistic": 9, "predecessors": ["多智能体协同算法开发", "客流预测模型开发", "资源调度引擎开发", "前端可视化界面开发"]},
-    {"name": "系统测试与Bug修复", "optimistic": 5, "most_likely": 7, "pessimistic": 10, "predecessors": ["系统集成与联调"]},
-    {"name": "疏导员培训教材编写", "optimistic": 3, "most_likely": 5, "pessimistic": 7, "predecessors": ["系统测试与Bug修复"]},
-    {"name": "系统部署与试运行", "optimistic": 2, "most_likely": 3, "pessimistic": 5, "predecessors": ["系统测试与Bug修复", "疏导员培训教材编写"]}
-]
-# ========================================================================
-
 class PERTProject:
     def __init__(self):
         self.tasks = {}
@@ -37,7 +21,7 @@ class PERTProject:
         self.ls = {}  # 最晚开始时间 (Latest Start)
         self.lf = {}  # 最晚结束时间 (Latest Finish)
         self.float_time = {} # 总时差/浮动时间
-        self.critical_path = []
+        self.critical_path = [] # 有序关键路径
         self.project_duration = 0
         self.G = nx.DiGraph()
 
@@ -47,7 +31,8 @@ class PERTProject:
         # PERT三点估算法：期望工期 = (乐观 + 4*最可能 + 悲观) / 6
         self.expected_durations[name] = (optimistic + 4 * most_likely + pessimistic) / 6
         self.G.add_node(name, duration=self.expected_durations[name])
-        for pred in predecessors: self.G.add_edge(pred, name)
+        for pred in predecessors: 
+            self.G.add_edge(pred, name)
 
     def batch_add_tasks(self, task_list):
         for task in task_list:
@@ -81,11 +66,35 @@ class PERTProject:
             # LS = LF - 工期
             self.ls[task] = self.lf[task] - self.expected_durations[task]
 
-        # --- 第三步：计算总时差并识别关键路径 ---
-        # 总时差 Float = LS - ES
-        # 关键路径：总时差为0的任务串联而成
-        for task in self.tasks: self.float_time[task] = self.ls[task] - self.es[task]
-        self.critical_path = [task for task in self.tasks if self.float_time[task] == 0]
+        # --- 第三步：计算总时差（修复浮点数精度问题）---
+        for task in self.tasks: 
+            self.float_time[task] = self.ls[task] - self.es[task]
+
+        # ====================== 【BUG修复】关键路径生成（兼容浮点数误差+多起点） ======================
+        # 1. 关键任务判定：容忍1e-6的误差，避免浮点数计算导致的误判
+        critical_nodes = [task for task in self.tasks if abs(self.float_time[task]) < 1e-6]
+        self.critical_path = []
+        
+        # 2. 找到所有关键路径的起点（无前置任务的关键任务）
+        start_nodes = [n for n in critical_nodes if len(list(self.G.predecessors(n))) == 0]
+        
+        # 3. DFS深度优先搜索，生成最长关键路径
+        def dfs(node, path):
+            path.append(node)
+            next_nodes = [succ for succ in self.G.successors(node) if succ in critical_nodes]
+            if not next_nodes:
+                # 到达终点，更新最长路径
+                if len(path) > len(self.critical_path):
+                    self.critical_path = path.copy()
+            else:
+                for next_node in next_nodes:
+                    dfs(next_node, path)
+            path.pop()
+
+        # 遍历所有起点，生成关键路径
+        for start in start_nodes:
+            dfs(start, [])
+        # ==========================================================================
 
     def calculate_min_resources_and_schedule(self):
         """
@@ -230,7 +239,6 @@ class PERTProject:
         plt.tight_layout()
 
         # --- 窗口2：甘特图 (缩小适配版) ---
-        # 核心修改：画布从22*12缩小到18*9
         fig2 = plt.figure("甘特图", figsize=(18, 9))
         ax2 = fig2.add_subplot(111)
         fig2.subplots_adjust(left=0.08, right=0.95, top=0.9, bottom=0.1)
@@ -282,6 +290,18 @@ if __name__ == "__main__":
     choice = input("请选择：").strip()
     
     if choice == "1":
+        # 可以把你的JSON数据复制到这里测试
+        DEFAULT_PROJECT_TASKS = [
+            {"name": "需求分析", "optimistic": 2, "most_likely": 3, "pessimistic": 4, "predecessors": []},
+            {"name": "市场调研", "optimistic": 2, "most_likely": 3, "pessimistic": 4, "predecessors": []},
+            {"name": "概要设计", "optimistic": 3, "most_likely": 4, "pessimistic": 6, "predecessors": ["需求分析", "市场调研"]},
+            {"name": "数据库设计", "optimistic": 2, "most_likely": 3, "pessimistic": 5, "predecessors": ["概要设计"]},
+            {"name": "前端开发", "optimistic": 5, "most_likely": 7, "pessimistic": 9, "predecessors": ["概要设计"]},
+            {"name": "后端开发", "optimistic": 6, "most_likely": 8, "pessimistic": 10, "predecessors": ["数据库设计"]},
+            {"name": "系统测试", "optimistic": 3, "most_likely": 4, "pessimistic": 6, "predecessors": ["前端开发", "后端开发"]},
+            {"name": "上线部署", "optimistic": 1, "most_likely": 2, "pessimistic": 3, "predecessors": ["系统测试"]},
+            {"name": "用户培训", "optimistic": 1, "most_likely": 2, "pessimistic": 3, "predecessors": ["系统测试"]}
+        ]
         project.batch_add_tasks(DEFAULT_PROJECT_TASKS)
     elif choice == "2":
         while True:
