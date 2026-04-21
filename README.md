@@ -17,7 +17,7 @@
 ### 2.1 核心算法
 1.  **三点估算法 (PERT)**：
     *   通过乐观时间 ([optimistic](file://e:\i-tech\123124.py#L0-L0))、最可能时间 ([most_likely](file://e:\i-tech\123124.py#L0-L0)) 和悲观时间 ([pessimistic](file://e:\i-tech\123124.py#L0-L0)) 计算每个任务的期望工期：
-        $$ TE = \frac{O + 4M + P}{6} $$
+        `TE = (O + 4M + P) / 6`
 2.  **关键路径法 (CPM)**：
     *   **正推法 (Forward Pass)**：计算每个任务的最早开始时间 (`ES`) 和最早结束时间 (`EF`)。
     *   **逆推法 (Backward Pass)**：计算每个任务的最晚开始时间 (`LS`) 和最晚结束时间 (`LF`)。
